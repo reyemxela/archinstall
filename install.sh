@@ -33,9 +33,12 @@ if [ "${1}" = "" ]; then
     echo 'Mounting root filesystem...'
     mount $rootpart /mnt
 
+    echo 'Copying pacman mirrorlist to new filesystem...'
+    cp /etc/pacman.d/mirrorlist /mnt/etc/pacman.d/mirrorlist
+
     echo 'Running pacstrap'
-    pacstrap /mnt base base-devel linux linux-firmware grub
-    pacstrap /mnt vim sudo
+    pacstrap /mnt base base-devel linux linux-firmware grub dhcpcd
+    pacstrap /mnt vim sudo zsh
 
     echo 'Running genfstab...'
     genfstab -U /mnt >> /mnt/etc/fstab
@@ -71,14 +74,17 @@ if [ "${1}" = "chroot" ]; then
     echo "::1         localhost" >>/etc/hosts
     echo "127.0.1.1   ${hostname}.${domain}   ${hostname}" >>/etc/hosts
 
+    echo 'Enabling dhcpcd...'
+    systemctl enable dhcpcd
+
     echo 'Setting new root password'
     passwd
 
-    echo 'Generating GRUB config...'
-    grub-mkconfig -o /boot/grub/grub.cfg
     read -p 'Enter drive name to install GRUB (/dev/xxx): ' drive
     echo 'Running grub-install...'
     grub-install $drive
+    echo 'Generating GRUB config...'
+    grub-mkconfig -o /boot/grub/grub.cfg
 
     exit
 fi
