@@ -7,7 +7,11 @@ if [ "${1}" = "" ]; then
 
     echo -e '\n--------------------------------------------'
     read -p 'Enter drive name (/dev/xxx): ' drive
-    cfdisk $drive
+    #cfdisk $drive
+    parted -s "$drive" \
+        mklabel msdos \
+        mkpart primary ext2 1 100% \
+        set 1 boot on
 
     fdisk -l $drive
     echo -e '\n--------------------------------------------'
@@ -15,15 +19,15 @@ if [ "${1}" = "" ]; then
     echo 'Formatting with ext4...'
     mkfs.ext4 $rootpart
 
-    echo -e '\n--------------------------------------------'
-    read -p 'Swap partition? [y/N]: ' swapyesno
-    case $swapyesno in
-        [yY]*)
-            read -p 'Enter swap partition name (/dev/xxx2): ' swappart
-            mkswap $swappart
-            swapon $swappart
-            ;;
-    esac
+    #echo -e '\n--------------------------------------------'
+    #read -p 'Swap partition? [y/N]: ' swapyesno
+    #case $swapyesno in
+    #    [yY]*)
+    #        read -p 'Enter swap partition name (/dev/xxx2): ' swappart
+    #        mkswap $swappart
+    #        swapon $swappart
+    #        ;;
+    #esac
 
     echo 'Setting up custom mirror...'
     echo 'Server = https://mirrors.kernel.org/archlinux/$repo/os/$arch' > /etc/pacman.d/mirrorlist.new
@@ -37,8 +41,7 @@ if [ "${1}" = "" ]; then
     cp /etc/pacman.d/mirrorlist /mnt/etc/pacman.d/mirrorlist
 
     echo 'Running pacstrap'
-    pacstrap /mnt base base-devel linux linux-firmware grub dhcpcd
-    pacstrap /mnt vim sudo zsh
+    pacstrap /mnt base base-devel linux linux-firmware grub dhcpcd git vim sudo zsh
 
     echo 'Running genfstab...'
     genfstab -U /mnt >> /mnt/etc/fstab
@@ -65,6 +68,18 @@ if [ "${1}" = "chroot" ]; then
     echo 'en_US.UTF-8 UTF-8' >/etc/locale.gen
     echo 'LANG=en_US.UTF-8' >/etc/locale.conf
     locale-gen &>/dev/null
+    
+    echo 'Setting pacman preferences...'
+    sed -i 's/#Color/Color/' /etc/pacman.conf
+    
+    echo 'Installing yay...'
+    sudo -u nobody git clone https://aur.archlinux.org/yay-bin.git /tmp/yay-bin
+    cd /tmp/yay-bin
+    sudo -u nobody makepkg -s
+    pacman -U yay-bin*.pkg.tar.xz
+    
+    echo 'Setting sudo preferences...'
+    echo '%wheel ALL=(ALL) ALL' >> /etc/sudoers.d/wheel
 
     read -p 'Enter hostname: ' hostname
     read -p 'Enter dns suffix: ' domain
@@ -79,6 +94,12 @@ if [ "${1}" = "chroot" ]; then
 
     echo 'Setting new root password'
     passwd
+    
+    echo 'Setting up new user...'
+    read -p 'New user name: ' username
+    useradd -m -G wheel,video $username
+    passwd $username
+    chsh $username
 
     read -p 'Enter drive name to install GRUB (/dev/xxx): ' drive
     echo 'Running grub-install...'
