@@ -41,7 +41,7 @@ if [ "${1}" = "" ]; then
     cp /etc/pacman.d/mirrorlist /mnt/etc/pacman.d/mirrorlist
 
     echo 'Running pacstrap'
-    pacstrap /mnt base base-devel linux linux-firmware grub dhcpcd git vim sudo zsh
+    pacstrap /mnt base base-devel linux linux-firmware grub openssh dhcpcd git vim sudo zsh
 
     echo 'Running genfstab...'
     genfstab -U /mnt >> /mnt/etc/fstab
